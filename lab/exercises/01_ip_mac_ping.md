@@ -35,18 +35,21 @@ sur la ligne `inet` se trouvent l'**adresse IP** et le **masque** (après le `/`
 
 | Information        | Valeur pour le client |
 | ------------------ | --------------------- |
-| Nom de l'interface | …                     |
-| Adresse MAC        | …                     |
-| Adresse IP         | …                     |
-| Masque (notation `/`) | …                  |
-| Adresse du réseau  | …                     |
+| Nom de l'interface | `eth0` |
+| Adresse MAC        | `02:42:ac:14:01:32` (format Docker `02:42:ac:...`) |
+| Adresse IP         | `172.20.1.50` |
+| Masque (notation `/`) | `/24` (soit `255.255.255.0`) |
+| Adresse du réseau  | `172.20.1.0/24` |
 
 **Question A.2.** Le masque est `/24`. Combien de machines différentes peut-on placer dans ce réseau ?
 (Indice : le dernier nombre de l'adresse peut varier de 0 à 255, mais 2 valeurs sont réservées.)
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> On peut placer **254 machines** dans ce réseau.
+> - Le masque `/24` réserve 8 bits pour les hôtes ($2^8 = 256$ adresses au total).
+> - Deux adresses sont réservées : l'adresse réseau (`172.20.1.0`) et l'adresse de diffusion/broadcast (`172.20.1.255`).
+> - Il reste donc $256 - 2 = 254$ adresses utilisables pour des machines (de `172.20.1.1` à `172.20.1.254`).
 
 ### Étape 2 — Ma passerelle
 
@@ -65,7 +68,7 @@ ip route
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> L'adresse de la passerelle est **`172.20.1.254`**. Elle correspond à la machine **`nat-router`** (le routeur / la « box » du lab, sur son interface LAN).
 
 ---
 
@@ -104,7 +107,9 @@ eu besoin de cette information **avant** de pouvoir envoyer le ping ?
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> - **Ligne apparue :** Une ligne associée à `172.20.1.2` (ex. `172.20.1.2 dev eth0 lladdr 02:42:ac:14:01:02 REACHABLE`).
+> - **Contenu :** Elle associe l'adresse IP du serveur DHCP (`172.20.1.2`) à son adresse physique MAC (`lladdr`) sur l'interface `eth0`.
+> - **Pourquoi avant le ping :** Pour émettre le paquet ICMP (couche 3) sur le lien Ethernet local (couche 2), il doit obligatoirement être encapsulé dans une trame Ethernet comportant l'adresse MAC du destinataire. Le client a donc exécuté au préalable une requête ARP (*Who has 172.20.1.2?*) pour obtenir cette MAC avant d'envoyer le ping.
 
 ### Étape 5 — Joindre une machine d'un autre réseau
 
@@ -121,7 +126,8 @@ a-t-il appris la MAC ? Expliquez pourquoi, en vous aidant de la fiche théorique
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> - Le client a appris la MAC de la **passerelle par défaut : `172.20.1.254`** (`nat-router`).
+> - **Explication :** En comparant l'IP destination (`172.20.0.10`) avec son propre masque (`/24`), le client constate que cette machine n'est pas sur son réseau local. Les trames Ethernet de couche 2 ne traversent pas les routeurs, le client ne peut donc pas contacter directement `172.20.0.10` en ARP. Sa table de routage lui indique de passer par sa passerelle (`172.20.1.254`). Il demande donc la MAC de la passerelle via ARP et lui transmet la trame pour que le routeur se charge de l'acheminer.
 
 ---
 
@@ -141,7 +147,9 @@ cette différence ? (Indice : chaque routeur traversé diminue le TTL de 1.)
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> - Vers le routeur (`172.20.1.254`) : `ttl=64`.
+> - Vers le site web (`172.20.0.10`) : `ttl=63`.
+> - **Ils ne sont pas identiques.** Cette différence s'explique par le fait que chaque routeur traversé décrémente la valeur du TTL de 1. Le routeur répond directement sur le LAN (0 saut intermédiaire, donc TTL intact à 64). Pour joindre le site web sur le WAN, le paquet traverse le routeur `nat-router`, qui diminue le TTL de 1 ($64 - 1 = 63$).
 
 ### Étape 7 — traceroute
 
@@ -158,7 +166,10 @@ Dessinez (en texte) le chemin suivi : `client → … → internet`.
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> - **Nombre de sauts :** 2 sauts.
+> - **Premier saut :** `172.20.1.254` (passerelle / routeur `nat-router`).
+> - **Chemin suivi :**
+>   `client (172.20.1.50) → nat-router (172.20.1.254 / 172.20.0.254) → internet (172.20.0.10)`
 
 ### Étape 8 — Le lab est isolé
 
@@ -172,7 +183,8 @@ ping -c 2 -W 2 8.8.8.8
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> - **Constat :** Les pings échouent avec 100% de perte (`100% packet loss` ou `Destination Host Unreachable` / délai d'attente dépassé).
+> - **Pourquoi :** Le lab est un réseau virtuel Docker isolé de l'extérieur (`enable_ip_masquerade: "false"`). Le réseau WAN ne contient que le routeur et le serveur web simulé `172.20.0.10`. Il n'y a aucune connexion ni passerelle vers le véritable Internet public derrière `nat-router` pour router vers `8.8.8.8`.
 
 ---
 
@@ -182,18 +194,19 @@ ping -c 2 -W 2 8.8.8.8
 
 | Notion        | Explication en une phrase |
 | ------------- | ------------------------- |
-| Adresse IP    | …                         |
-| Adresse MAC   | …                         |
-| Passerelle    | …                         |
-| ARP           | …                         |
-| TTL           | …                         |
+| Adresse IP    | Identifiant logique de couche 3 (réseau) permettant de localiser et router des paquets d'une machine à une autre à travers différents réseaux. |
+| Adresse MAC   | Identifiant physique de couche 2 (liaison) propre à une carte réseau, utilisé pour acheminer les trames sur le réseau local direct. |
+| Passerelle    | Routeur par défaut vers lequel une machine dirige ses paquets lorsqu'ils sont destinés à un autre réseau que le sien. |
+| ARP           | Protocole de résolution d'adresses permettant d'obtenir l'adresse MAC correspondant à une adresse IP sur un même réseau local. |
+| TTL           | Compteur (*Time To Live*) de l'en-tête IP décrémenté par chaque routeur traversé pour empêcher un paquet de tourner indéfiniment en boucle. |
 
 **Question D.2.** Vrai ou faux ? Justifiez : « Pour envoyer un paquet à `172.20.0.10`, le client met
 dans la trame la MAC de `172.20.0.10`. »
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> **Faux.**
+> `172.20.0.10` se situe sur un réseau distant (WAN). Le client ne peut pas joindre cette IP directement en couche 2 et ne connaît pas sa MAC. Le client encapsule donc le paquet IP (qui a bien pour IP de destination `172.20.0.10`) dans une trame Ethernet dont l'**adresse MAC de destination est celle de sa passerelle** (`172.20.1.254`). C'est le routeur qui se chargera ensuite de réencapsuler le paquet dans une nouvelle trame avec la MAC de destination finale.
 
 ---
 
