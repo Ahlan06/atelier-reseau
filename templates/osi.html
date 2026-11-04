@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}OSI — Atelier Réseau{% endblock %}
+{% block content %}
+<h1>Modèle OSI <span class="sub">7 couches, du physique à l'application</span></h1>
+
+<p>OSI décompose la communication en sept couches indépendantes. Chaque couche encapsule la
+précédente et offre un <em>service</em> à la couche supérieure via des <em>primitives</em>.
+Une application web n'a accès qu'aux couches hautes (7, 6, 5, un peu la 4).</p>
+
+<h2>Aperçu de votre requête en cours</h2>
+<p>Voici ce que <strong>votre navigateur</strong> vient d'envoyer pour afficher cette page —
+l'essentiel vit couche 7, sauf <code>remote_addr</code> qui vient de la couche 3.</p>
+<div class="kv-card">
+  <div class="row"><span>Méthode HTTP</span><code>{{ observed.method }}</code></div>
+  <div class="row"><span>Chemin</span><code>{{ observed.path }}</code></div>
+  <div class="row"><span>Host (L7)</span><code>{{ observed.host or "—" }}</code></div>
+  <div class="row"><span>User-Agent</span><code>{{ observed.user_agent or "—" }}</code></div>
+  <div class="row"><span>Accept</span><code>{{ observed.accept or "—" }}</code></div>
+  <div class="row"><span>IP source (L3)</span><code>{{ observed.remote_addr or "—" }}</code></div>
+</div>
+
+<h2>Les 7 couches</h2>
+<div class="osi-stack">
+  {% for layer in layers %}
+  <div class="osi-layer {{ layer.slug }}">
+    <div class="osi-num">{{ layer.num }}</div>
+    <div class="osi-name">
+      {{ layer.name }}
+      <small>PDU&nbsp;: {{ layer.pdu }}</small>
+    </div>
+    <div class="osi-desc">{{ layer.description }}</div>
+    <div class="osi-examples">{{ layer.exemples }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="callout">
+  <strong>À retenir</strong> — l'encapsulation va du haut vers le bas à l'émission&nbsp;:
+  un message HTTP (L7) devient un segment TCP (L4), puis un paquet IP (L3), puis une trame
+  Ethernet (L2), puis des bits sur le câble (L1). Au retour, c'est l'inverse — c'est la
+  <em>désencapsulation</em>.
+</div>
+
+<h2>Vocabulaire</h2>
+<table class="data-table">
+  <thead><tr><th>Terme</th><th>Définition</th></tr></thead>
+  <tbody>
+    {% for v in vocabulaire %}
+    <tr><td><strong>{{ v.terme }}</strong></td><td>{{ v.definition }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="callout">
+  <strong>Exercice 2 (Codespace)</strong> — capturez un échange HTTP avec
+  <code>tcpdump</code> puis décodez-le couche par couche avec
+  <code>osi_inspect.py</code>. Énoncé&nbsp;: <code>lab/exercises/02_osi_capture.md</code>.
+</div>
+{% endblock %}

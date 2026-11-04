@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}DHCP — Atelier Réseau{% endblock %}
+{% block content %}
+<h1>DHCP <span class="sub">Dynamic Host Configuration Protocol</span></h1>
+
+<p>DHCP attribue automatiquement à un client une configuration réseau&nbsp;: <strong>adresse IP</strong>,
+<strong>masque</strong>, <strong>passerelle</strong>, <strong>serveurs DNS</strong>, et un bail
+à durée limitée. Le client est sur <code>udp/{{ ports.client }}</code>, le serveur sur
+<code>udp/{{ ports.serveur }}</code> — transport <code>{{ ports.transport }}</code>.</p>
+
+<h2>L'échange DORA</h2>
+<div class="dora-flow">
+  {% for step in dora %}
+  <div class="dora-step from-{{ step.side }}">
+    <div class="dora-head">
+      <span class="dora-num">{{ step.step }}</span>
+      <span class="dora-name">{{ step.name }}</span>
+      <span class="dora-route">{{ step.from_ }} <span class="arrow">→</span> {{ step.to }}</span>
+    </div>
+    <div class="dora-desc">{{ step.description }}</div>
+    <div class="dora-meta"><code>{{ step.src }}</code> <span class="arrow">→</span> <code>{{ step.dst }}</code></div>
+  </div>
+  {% endfor %}
+</div>
+
+<h2>Options DHCP courantes</h2>
+<table class="data-table">
+  <thead><tr><th>Code</th><th>Nom</th><th>Exemple</th></tr></thead>
+  <tbody>
+    {% for opt in options %}
+    <tr>
+      <td><span class="tag">{{ opt.code }}</span></td>
+      <td>{{ opt.nom }}</td>
+      <td><code>{{ opt.exemple }}</code></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Le bail (lease)</h2>
+<ul class="bullet">
+  <li><strong>T1 ≈ 50 %</strong> du bail — le client tente un <code>RENEW</code> en unicast vers son serveur.</li>
+  <li><strong>T2 ≈ 87,5 %</strong> du bail — si RENEW a échoué, le client passe en <code>REBIND</code> (broadcast).</li>
+  <li><strong>100 %</strong> — sans renouvellement, le client abandonne sa configuration et repart en DISCOVER.</li>
+</ul>
+
+<h2>Points de vigilance</h2>
+<ul class="bullet">
+  {% for r in risques %}<li>{{ r }}</li>{% endfor %}
+</ul>
+
+<div class="callout">
+  <strong>Exercice 3 (Codespace)</strong> — retirez l'adresse IP du client, capturez l'échange
+  DORA pendant que <code>dhclient -v eth0</code> en redemande une, puis analysez chaque message.
+  Énoncé&nbsp;: <code>lab/exercises/03_dhcp_dora.md</code>.
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Métriques QoS — Atelier Réseau{% endblock %}
+{% block content %}
+<h1>Métriques QoS <span class="sub">latence · débit · token-bucket</span></h1>
+
+<p>Cette page agrège les indicateurs observés sur les requêtes récentes (fenêtre glissante de
+2000 dernières requêtes). Elle se rafraîchit automatiquement toutes les 2&nbsp;secondes et
+expose les mêmes données en JSON&nbsp;: <code>curl /metrics?format=json</code>.</p>
+
+<div class="controls">
+  <label class="switch">
+    <input type="checkbox" id="autorefresh" checked>
+    <span>Auto-refresh (2&nbsp;s)</span>
+  </label>
+  <button id="refresh-now" class="btn">Rafraîchir maintenant</button>
+</div>
+
+<div id="status" class="dashboard-status">
+  <span class="dot"></span><span id="status-text">Chargement…</span>
+</div>
+
+<h2>Latence</h2>
+<div class="metrics-grid">
+  <div class="metric p50"><div class="label">p50 — médiane</div><div class="value-wrap"><span class="value" data-k="p50">—</span><span class="unit">ms</span></div></div>
+  <div class="metric p90"><div class="label">p90</div><div class="value-wrap"><span class="value" data-k="p90">—</span><span class="unit">ms</span></div></div>
+  <div class="metric p95"><div class="label">p95</div><div class="value-wrap"><span class="value" data-k="p95">—</span><span class="unit">ms</span></div></div>
+  <div class="metric p99"><div class="label">p99</div><div class="value-wrap"><span class="value" data-k="p99">—</span><span class="unit">ms</span></div></div>
+</div>
+
+<h2>Trafic &amp; qualité</h2>
+<div class="metrics-grid">
+  <div class="metric"><div class="label">Débit (60&nbsp;s)</div><div class="value-wrap"><span class="value" data-k="rps">—</span><span class="unit">req/s</span></div></div>
+  <div class="metric"><div class="label">Échantillons</div><div class="value-wrap"><span class="value" data-k="count">—</span></div></div>
+  <div class="metric err" id="err-card"><div class="label">Taux d'erreur</div><div class="value-wrap"><span class="value" data-k="err">—</span><span class="unit">%</span></div></div>
+  <div class="metric"><div class="label">Jitter (moy.)</div><div class="value-wrap"><span class="value" data-k="jitter">—</span><span class="unit">ms</span></div></div>
+</div>
+
+<div class="spark-wrap">
+  <div class="spark-head">
+    <h2>p95 — 60 derniers échantillons</h2>
+    <span class="spark-axis"><span data-k="spark-max">—</span> ms <span class="muted">/</span> <span data-k="spark-min">—</span> ms</span>
+  </div>
+  <canvas id="spark"></canvas>
+</div>
+
+<h2>Politique QoS — token bucket</h2>
+<div class="kv-card">
+  <div class="row"><span>Capacité (burst)</span><code data-k="burst">—</code></div>
+  <div class="row"><span>Recharge</span><code data-k="rate">—</code></div>
+  <div class="row"><span>Comportement quand vide</span><code>HTTP 429 + <em>Retry-After</em></code></div>
+</div>
+
+<div class="callout">
+  <strong>Exercice — Charge &amp; QoS</strong> — injectez une rafale et observez le bucket se vider&nbsp;:
+  <pre>for i in $(seq 1 30); do curl -s -o /dev/null https://{site}.pythonanywhere.com/osi; done
+curl -s 'https://{site}.pythonanywhere.com/metrics?format=json' | python -m json.tool</pre>
+  À partir de combien de req/s le bucket renvoie-t-il <code>HTTP 429</code>&nbsp;? Recoupez avec
+  <code>TOKENS_PER_SEC</code> et <code>BURST</code> dans <code>flask_app.py</code>.
+</div>
+
+<script src="{{ url_for('static', filename='metrics.js') }}"></script>
+{% endblock %}

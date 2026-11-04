@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}NAT/PAT — Atelier Réseau{% endblock %}
+{% block content %}
+<h1>NAT / PAT <span class="sub">Network Address Translation</span></h1>
+
+<p>Le NAT traduit des adresses privées (RFC&nbsp;1918) en une ou plusieurs adresses publiques
+pour permettre l'accès à Internet. En pratique c'est presque toujours du <strong>PAT</strong>
+(NAT overload)&nbsp;: une seule IP publique partagée, et le routeur multiplexe les flux par
+<em>numéro de port source</em>.</p>
+
+<h2>Plages privées (RFC&nbsp;1918)</h2>
+<p>{% for r in rfc1918 %}<span class="tag tag-mono">{{ r }}</span> {% endfor %}</p>
+
+<h2>Exemple PAT — avant / après</h2>
+<div class="nat-translation">
+  <div class="nat-side">
+    <h3>LAN (avant traduction)</h3>
+    <div class="field"><span>IP source</span><code>{{ exemple.avant.ip }}</code></div>
+    <div class="field"><span>Port source</span><code>{{ exemple.avant.port }}</code></div>
+    <div class="field"><span>Destination</span><code>{{ exemple.avant.dst }}</code></div>
+  </div>
+  <div class="nat-arrow">→</div>
+  <div class="nat-side">
+    <h3>WAN (après traduction)</h3>
+    <div class="field"><span>IP source</span><code>{{ exemple.apres.ip }}</code></div>
+    <div class="field"><span>Port source</span><code>{{ exemple.apres.port }}</code></div>
+    <div class="field"><span>Destination</span><code>{{ exemple.apres.dst }}</code></div>
+  </div>
+</div>
+
+<h2>Table de traduction (vue conntrack)</h2>
+<table class="data-table mono">
+  <thead>
+    <tr><th>Interne</th><th>Public</th><th>Destination</th><th>Protocole</th></tr>
+  </thead>
+  <tbody>
+    {% for row in table %}
+    <tr>
+      <td class="ok">{{ row.interne }}</td>
+      <td>{{ row.publique }}</td>
+      <td>{{ row.destination }}</td>
+      <td><span class="tag">{{ row.protocole }}</span></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Types de NAT</h2>
+<ul class="bullet">
+  {% for t in types %}
+  <li>
+    <strong>{{ t.nom }}</strong>{% if t.courant %} <span class="tag tag-accent">le plus courant</span>{% endif %} — {{ t.description }}
+  </li>
+  {% endfor %}
+</ul>
+
+<h2>Limites</h2>
+<ul class="bullet">
+  {% for l in limites %}<li>{{ l }}</li>{% endfor %}
+</ul>
+
+<div class="callout">
+  <strong>Exercice 4 (Codespace)</strong> — observez la table de traduction en direct sur le routeur
+  (<code>conntrack -L</code>), puis supprimez la règle <code>MASQUERADE</code> et constatez la panne.
+  Énoncé&nbsp;: <code>lab/exercises/04_nat_pat.md</code>.
+</div>
+{% endblock %}
