@@ -47,7 +47,8 @@ ping -c 2 172.20.1.254
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> On obtient l'erreur : `ping: connect: Network is unreachable`.
+> En vidant la configuration de l'interface avec `ip addr flush`, l'adresse IP et toutes les routes associées (la route locale et la passerelle par défaut) ont été supprimées de la table de routage. Le noyau ne sait plus par où router le paquet ni quelle IP source utiliser, donc l'émission est bloquée.
 
 ---
 
@@ -89,7 +90,15 @@ Qui vous l'a donnée ?
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> Les 5 lignes obtenues :
+> ```text
+> DHCPDISCOVER on eth0 to 255.255.255.255 port 67 interval 3
+> DHCPOFFER of 172.20.1.134 from 172.20.1.2
+> DHCPREQUEST for 172.20.1.134 on eth0 to 255.255.255.255 port 67
+> DHCPACK of 172.20.1.134 from 172.20.1.2
+> bound to 172.20.1.134 -- renewal in 20562 seconds.
+> ```
+> J'ai obtenu l'adresse `172.20.1.134`. Elle a été attribuée par le serveur DHCP du lab (`172.20.1.2`, conteneur `lab_dhcp_server`).
 
 ### Étape 5 — Analyser les 4 messages
 
@@ -112,26 +121,26 @@ Qui vous l'a donnée ?
 
 | Étape       | IP source | IP destination    | MAC destination   | Type DHCP (opt 53) | Transaction ID |
 | ----------- | --------- | ----------------- | ----------------- | ------------------ | -------------- |
-| 1. Discover | `0.0.0.0` | `255.255.255.255` | …                 | …                  | …              |
-| 2. Offer    | …         | …                 | …                 | …                  | …              |
-| 3. Request  | …         | …                 | …                 | …                  | …              |
-| 4. ACK      | …         | …                 | …                 | …                  | …              |
+| 1. Discover | `0.0.0.0` | `255.255.255.255` | `ff:ff:ff:ff:ff:ff` | 1 (Discover)     | `0x3a1b8c2e`   |
+| 2. Offer    | `172.20.1.2` | `172.20.1.134` | `02:42:ac:14:01:32` | 2 (Offer)        | `0x3a1b8c2e`   |
+| 3. Request  | `0.0.0.0` | `255.255.255.255` | `ff:ff:ff:ff:ff:ff` | 3 (Request)      | `0x3a1b8c2e`   |
+| 4. ACK      | `172.20.1.2` | `172.20.1.134` | `02:42:ac:14:01:32` | 5 (ACK)          | `0x3a1b8c2e`   |
 
 **Question B.3.** Dans le paquet **Offer** (n°2), relevez la configuration proposée par le serveur :
 
 | Information              | Option DHCP | Valeur |
 | ------------------------ | ----------- | ------ |
-| Adresse IP proposée      | (yiaddr)    | …      |
-| Masque de sous-réseau    | 1           | …      |
-| Passerelle (routeur)     | 3           | …      |
-| Serveurs DNS             | 6           | …      |
-| Durée du bail (secondes) | 51          | …      |
+| Adresse IP proposée      | (yiaddr)    | `172.20.1.134` |
+| Masque de sous-réseau    | 1           | `255.255.255.0` |
+| Passerelle (routeur)     | 3           | `172.20.1.254` |
+| Serveurs DNS             | 6           | `1.1.1.1, 8.8.8.8` |
+| Durée du bail (secondes) | 51          | `43200` |
 
 Convertissez la durée du bail en heures.
 
 > 💬 **Votre réponse (conversion) :**
 >
-> _Remplacez ce texte par votre réponse._
+> 43200 secondes / 3600 = **12 heures** (ce qui correspond bien à la directive `12h` dans `dnsmasq.conf`).
 
 ---
 
@@ -153,7 +162,11 @@ question B.3 ? Le ping vers le routeur fonctionne-t-il à nouveau ?
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> Oui, tout concorde :
+> - `ip addr` affiche bien `172.20.1.134/24` sur `eth0`.
+> - `ip route` montre la route par défaut `default via 172.20.1.254 dev eth0`.
+> - `/etc/resolv.conf` contient `nameserver 1.1.1.1` et `nameserver 8.8.8.8`.
+> Le ping vers la passerelle `172.20.1.254` fonctionne de nouveau sans perte.
 
 ### Étape 7 — Le point de vue du serveur
 
@@ -173,7 +186,7 @@ a-t-il associée à l'IP attribuée ?
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> On retrouve bien les 4 étapes avec le même Transaction ID dans les logs. Le serveur a lié l'IP `172.20.1.134` à l'adresse MAC du client, c'est-à-dire `02:42:ac:14:01:32`.
 
 ---
 
@@ -183,28 +196,29 @@ a-t-il associée à l'IP attribuée ?
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> Parce qu'au moment d'envoyer le Discover, le client n'a pas encore d'adresse IP valide. L'adresse `0.0.0.0` est réservée par la RFC DHCP pour désigner un hôte non encore configuré sur le réseau local.
 
 **Question D.2.** Pourquoi le Discover est-il envoyé à `255.255.255.255` et à la MAC `ff:ff:ff:ff:ff:ff` ?
 Que signifient ces adresses ?
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> Ce sont les adresses de broadcast (diffusion) au niveau IP (couche 3) et Ethernet (couche 2). Le client ne sait pas encore où se trouve le serveur DHCP ni quelle est son IP/MAC. En diffusant en broadcast, toutes les machines du LAN reçoivent le message, et seul le serveur DHCP le prend en charge.
 
 **Question D.3.** À quoi sert le **Transaction ID**, identique dans les 4 messages ?
 (Imaginez 30 PC qui démarrent en même temps sur le même réseau.)
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> C'est un identifiant de session généré aléatoirement par le client. Si plusieurs machines démarrent en même temps et lancent des requêtes DHCP en broadcast, le Transaction ID permet à chaque client d'identifier les offres (Offer) et validations (ACK) qui lui sont destinées et d'ignorer celles des autres machines.
 
 **Question D.4.** Que se passe-t-il quand le **bail expire** ? Pourquoi les baux ont-ils une durée
 limitée plutôt qu'infinie ?
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> Si le bail expire sans avoir été renouvelé, le client doit obligatoirement cesser d'utiliser l'adresse IP et redémarrer la procédure depuis le Discover.
+> Les baux ont une durée limitée pour permettre au serveur de récupérer et réassigner les adresses des machines éteintes ou déconnectées, ce qui évite d'épuiser les adresses disponibles dans le pool.
 
 ---
 
@@ -222,7 +236,8 @@ Quel message est envoyé par `dhclient -r` ? Obtenez-vous la même adresse ensui
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> La commande `dhclient -r` émet un message `DHCPRELEASE` en unicast vers le serveur DHCP.
+> En redemandant une adresse juste après, on réobtient la même (`172.20.1.134`). Dnsmasq conserve une table d'association récente (ou dérive l'attribution de la MAC), donc tant que l'adresse est libre, il la redonne au même client.
 
 **P.2 — Panne du serveur DHCP.** 🖥️ Arrêtez le serveur, puis 💻 redemandez une adresse :
 
@@ -243,7 +258,8 @@ Que se passe-t-il ? Quelles conséquences dans une entreprise si le serveur DHCP
 
 > 💬 **Votre réponse :**
 >
-> _Remplacez ce texte par votre réponse._
+> `dhclient` envoie des DISCOVER en boucle sans réponse et finit par abandonner avec `No working leases in persistent database - sleeping`.
+> En entreprise, les machines qui ont déjà un bail actif continuent de communiquer jusqu'à son expiration, mais aucun nouvel appareil ne pourra obtenir d'adresse IP ni accéder au réseau, ce qui paralyse les utilisateurs arrivant sur le réseau.
 
 ---
 

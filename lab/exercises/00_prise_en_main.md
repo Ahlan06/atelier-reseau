@@ -141,23 +141,20 @@ Retenez ce résultat, il sera expliqué dans l'exercice 4 !
 
 > 💬 **Votre réponse :**
 >
-> La commande est `docker compose ps` (exécutée depuis le dossier `lab`). Elle affiche l'état des conteneurs avec leur statut (ex. `Up`).
+> On utilise `docker compose ps` depuis le dossier `lab`. Ça liste les 4 conteneurs et leur statut (ils doivent être à `Up`).
 
 **Question 2.** Comment savez-vous, en regardant l'écran, que vous êtes dans le terminal du client et non dans celui de Codespace ?
 
 > 💬 **Votre réponse :**
 >
-> On le reconnaît grâce à l'invite de commande (*prompt*) :
-> - Dans Codespace, l'invite ressemble à `@votre-nom ➜ /workspaces/ATELIER_RESEAU (main) $`.
-> - Dans le client, l'invite affiche `root@client:/#`, ce qui indique qu'on est connecté en tant que `root` sur la machine `client`.
-> On peut aussi le confirmer en exécutant la commande `hostname`, qui retourne `client`.
+> On le voit directement au niveau du prompt : dans Codespace on a l'invite de la VM (`@user ➜ ... $`), alors que dans le conteneur client le prompt passe à `root@client:/#`. On peut aussi taper la commande `hostname` qui renvoie bien `client`.
 
 **Question 3.** Le client a l'adresse `172.20.1.50` et le site web `172.20.0.10`. Ces deux machines sont-elles sur le même réseau ? Quelle machine se trouve « entre » les deux ?
 
 > 💬 **Votre réponse :**
 >
-> - **Non**, elles ne sont pas sur le même réseau : le client appartient au réseau local (LAN) `172.20.1.0/24`, tandis que le serveur web appartient au réseau externe (WAN) `172.20.0.0/24`.
-> - La machine située « entre » les deux est le routeur `nat-router` (qui possède deux interfaces : `172.20.1.254` sur le LAN et `172.20.0.254` sur le WAN) ; il assure le routage et le NAT entre le LAN et le WAN.
+> Non, elles ne sont pas sur le même réseau. Avec un masque en `/24`, le client est sur le sous-réseau LAN `172.20.1.0/24` et le serveur web est sur le WAN `172.20.0.0/24`.
+> La machine intermédiaire est le routeur `nat-router` (notre box), qui a une patte sur le LAN (`172.20.1.254`) et une patte sur le WAN (`172.20.0.254`) et qui route le trafic en faisant du NAT.
 
 ---
 

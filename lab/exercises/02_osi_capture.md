@@ -80,16 +80,15 @@ indicateurs `[SYN]`, `[SYN, ACK]`, `[ACK]`. Comment s'appelle cet échange, et �
 
 > 💬 **Votre réponse :**
 >
-> Cet échange s'appelle la **triple poignée de main TCP** (*TCP 3-way handshake*).
-> Il sert à **établir une connexion fiable** (couche 4 — Transport) entre le client et le serveur avant tout transfert de données applicatives (HTTP). Il permet de synchroniser les numéros de séquence initiaux (ISN) et de négocier les paramètres de la connexion (taille des fenêtres, MSS, etc.).
+> C'est le **three-way handshake** de TCP (la poignée de main en trois temps). Il permet d'établir une connexion fiable en couche 4 (Transport) entre le client et le serveur avant d'échanger des données HTTP, notamment en synchronisant les numéros de séquence (ISN) et en négociant les paramètres de session.
 
 **Question A.2.** Repérez le numéro du paquet contenant la **requête** `GET /` et celui contenant
 la **réponse** `200 OK`. Qui envoie chacun d'eux (IP source) ?
 
 > 💬 **Votre réponse :**
 >
-> - **Requête `GET /` :** Paquet n°**4**. L'IP source est `172.20.1.50` (le **client**).
-> - **Réponse `200 OK` :** Paquet n°**8**. L'IP source est `172.20.0.10` (le **serveur web / site internet**).
+> - La requête `GET /` est dans le paquet **4**, envoyé par le client (`172.20.1.50`).
+> - La réponse `200 OK` est dans le paquet **8**, envoyé par le serveur web (`172.20.0.10`).
 
 ---
 
@@ -111,13 +110,13 @@ la **réponse** `200 OK`. Qui envoie chacun d'eux (IP source) ?
 | Couche OSI         | Protocole | Champ observé       | Valeur dans ma capture |
 | ------------------ | --------- | ------------------- | ---------------------- |
 | 7 — Application    | HTTP      | Méthode et chemin   | `GET / HTTP/1.1`       |
-| 4 — Transport      | TCP       | Port source         | `52790` (port éphémère)|
+| 4 — Transport      | TCP       | Port source         | `52790`                |
 | 4 — Transport      | TCP       | Port destination    | `80`                   |
 | 3 — Réseau         | IPv4      | IP source           | `172.20.1.50`          |
 | 3 — Réseau         | IPv4      | IP destination      | `172.20.0.10`          |
 | 3 — Réseau         | IPv4      | TTL                 | `64`                   |
-| 2 — Liaison        | Ethernet  | MAC source          | `02:42:ac:14:01:32` (MAC du client) |
-| 2 — Liaison        | Ethernet  | MAC destination     | `02:42:ac:14:01:fe` (MAC de la passerelle `172.20.1.254`) |
+| 2 — Liaison        | Ethernet  | MAC source          | `02:42:ac:14:01:32`    |
+| 2 — Liaison        | Ethernet  | MAC destination     | `02:42:ac:14:01:fe`    |
 | 1 — Physique       | —         | (non visible)       | —                      |
 
 **Question B.2.** Le port destination est `80`. Que désigne-t-il ? Le port source est un grand
@@ -125,16 +124,15 @@ nombre (ex. `52790`) : qui l'a choisi, et pourquoi n'est-il pas toujours le mêm
 
 > 💬 **Votre réponse :**
 >
-> - **Port destination `80` :** C'est le port d'écoute standard et réservé du service HTTP sur le serveur.
-> - **Port source (ex. `52790`) :** C'est un port éphémère (*ephemeral port*) alloué automatiquement et dynamiquement par le système d'exploitation du client (la pile réseau du noyau). Il change à chaque nouvelle connexion pour garantir que chaque socket (`IP_src:Port_src` vers `IP_dst:Port_dst`) reste unique, ce qui permet de multiplexer plusieurs connexions simultanées sans collision.
+> Le port 80 est le port standard bien connu (well-known port) du service HTTP.
+> Le port source (`52790`) est un port éphémère attribué dynamiquement par le système d'exploitation du client. Il change à chaque nouvelle connexion afin que le quadruplet (IP src, Port src, IP dst, Port dst) reste unique, ce qui permet à l'OS de distinguer plusieurs flux réseau en parallèle sans collision.
 
 **Question B.3.** La **MAC destination** est-elle celle du site web `internet` ? À quelle machine
 appartient-elle ? (Comparez avec `ip neigh` dans le terminal client, et repensez à l'exercice 1.)
 
 > 💬 **Votre réponse :**
 >
-> **Non**, ce n'est pas la MAC du site web. Elle appartient à la **passerelle par défaut : `nat-router`** (`172.20.1.254`).
-> Les trames Ethernet de couche 2 ne franchissent pas les routeurs ; le client remet donc la trame sur le réseau local à son routeur en indiquant la MAC de celui-ci, tandis que l'IP de destination de couche 3 reste celle de la cible finale (`172.20.0.10`).
+> Non, c'est l'adresse MAC de la passerelle `nat-router` (`172.20.1.254`). En Ethernet, la trame ne peut pas sortir du réseau local : le client l'envoie donc au routeur (avec la MAC du routeur en destination L2), qui se chargera ensuite de réencapsuler le paquet vers le WAN.
 
 ### Étape 6 — Comparer avec un paquet sans HTTP
 
@@ -149,10 +147,9 @@ dans le paquet 1 ? Pourquoi ?
 
 > 💬 **Votre réponse :**
 >
-> - **Paquet 1 :** `Pile présente : L2 (Ethernet) → L3 (IPv4) → L4 (TCP)`
-> - **Paquet 4 :** `Pile présente : L2 (Ethernet) → L3 (IPv4) → L4 (TCP) → L7 (HTTP)`
-> - **Couche manquante :** La couche **7 (Application — HTTP)** est absente du paquet 1.
-> - **Pourquoi :** Le paquet 1 sert uniquement à initialiser la connexion TCP au niveau de la couche Transport (SYN). Tant que la connexion TCP n'est pas établie (au terme de la poignée de main en 3 étapes), aucune donnée applicative HTTP n'est transmise.
+> - Paquet 1 : `Pile présente : L2 (Ethernet) → L3 (IPv4) → L4 (TCP)`
+> - Paquet 4 : `Pile présente : L2 (Ethernet) → L3 (IPv4) → L4 (TCP) → L7 (HTTP)`
+> Il manque la couche 7 (HTTP) dans le paquet 1. C'est normal : le paquet 1 est un simple segment SYN pour démarrer la connexion TCP. Tant que le handshake n'est pas terminé, aucune donnée applicative n'est envoyée.
 
 ### Étape 7 — Regarder la réponse du serveur
 
@@ -168,9 +165,8 @@ données) ? Aidez-vous de la fiche théorique.
 
 > 💬 **Votre réponse :**
 >
-> - **Content-Type :** `text/html`
-> - **Payload HTTP (extrait) :** Le code HTML de la page d'accueil (ex. `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Pseudo-Internet (lab)</title>...`).
-> - **Couche OSI :** Le `Content-Type` relève de la **couche 6 (Présentation)**, car il décrit le format, la structure et l'encodage des données transmises pour permettre à l'application de les interpréter correctement.
+> Le `Content-Type` est `text/html`. Le payload contient le début du code HTML de la page (`<!doctype html>...`).
+> Le format des données correspond à la couche 6 (Présentation) du modèle OSI, qui gère la représentation et l'encodage des données (même si dans la pratique TCP/IP, elle est intégrée à la couche applicative).
 
 ---
 
@@ -187,21 +183,21 @@ Complétez le schéma :
 
 > 💬 **Votre réponse :**
 >
-> L'**encapsulation** est le mécanisme par lequel chaque couche réseau descendante enveloppe les données de la couche supérieure (la SDU) en y ajoutant son propre en-tête de contrôle (*header*), formant ainsi une PDU complète, à la manière de poupées russes.
-> Dans notre exemple :
-> 1. Le message HTTP `GET /` (L7) forme les données de départ.
-> 2. TCP (L4) ajoute son en-tête (ports source/destination 52790 → 80, numéros de séquence) pour former un **segment TCP**.
-> 3. IP (L3) ajoute son en-tête (adresses IP 172.20.1.50 → 172.20.0.10, TTL) pour former un **paquet IP**.
-> 4. Ethernet (L2) ajoute les adresses MAC source et passerelle pour former une **trame Ethernet** prête à être transmise sur le média physique sous forme de bits (L1).
+> L'encapsulation est le principe où chaque couche descendante ajoute son propre en-tête (header) autour des données reçues de la couche supérieure, comme des poupées russes.
+> Pour notre requête :
+> 1. La commande HTTP `GET /` constitue les données L7.
+> 2. TCP (L4) ajoute son header avec les ports (52790 → 80) et forme un segment.
+> 3. IP (L3) encapsule ce segment dans un paquet avec les adresses IP (172.20.1.50 → 172.20.0.10).
+> 4. Ethernet (L2) ajoute les adresses MAC pour former une trame prête à circuler sur le lien physique.
 
 **Question C.2.** Associez chaque nom de PDU à sa couche : **trame**, **paquet**, **segment**, **bit**.
 
 > 💬 **Votre réponse :**
 >
-> - **Bit :** Couche 1 — Physique
-> - **Trame :** Couche 2 — Liaison de données
-> - **Paquet :** Couche 3 — Réseau
-> - **Segment :** Couche 4 — Transport (TCP) *(ou datagramme en UDP)*
+> - Bit : Couche 1 (Physique)
+> - Trame : Couche 2 (Liaison)
+> - Paquet : Couche 3 (Réseau)
+> - Segment : Couche 4 (Transport)
 
 ---
 
@@ -221,17 +217,14 @@ Quelle IP source voyez-vous côté WAN ? Comparez avec votre capture côté clie
 
 > 💬 **Votre réponse :**
 >
-> - **IP source côté WAN :** `172.20.0.254` (l'adresse de l'interface WAN du routeur).
-> - **Comparaison :** Côté client, l'IP source était `172.20.1.50`. C'est le routeur `nat-router` qui a remplacé l'adresse IP source privée du client par sa propre adresse publique WAN lors de la traversée : c'est le mécanisme de **NAT (Source NAT / Masquerade)**.
+> Côté WAN, l'IP source est `172.20.0.254` au lieu de `172.20.1.50`. C'est le routeur qui a réécrit l'adresse source en sortie de son interface WAN via le mécanisme de NAT (masquerading).
 
 **Question P.2.** Sur votre propre ordinateur, ouvrez un site en `https://`. En quoi la capture
 serait-elle différente ? Quelles informations ne pourrait-on plus lire ?
 
 > 💬 **Votre réponse :**
 >
-> - **Différence :** Le protocole de chiffrement **TLS** s'intercale entre TCP (L4) et HTTP (L7), et le port destination devient `443`.
-> - **Ce qu'on ne pourrait plus lire :** Le contenu de la couche 7 est entièrement chiffré. On ne peut plus voir la méthode (`GET`), l'URL/chemin demandé, les en-têtes HTTP (cookies, user-agent) ni le corps de la requête ou de la réponse (payload).
-> - **Ce qui reste visible :** Les adresses MAC (L2), les adresses IP (L3), les ports TCP (L4) et le nom de domaine du site hôte (indiqué en clair dans l'extension TLS *SNI - Server Name Indication* lors de l'établissement TLS).
+> Avec HTTPS, la couche TLS est intercalée au-dessus de TCP (sur le port 443) et chiffre tout le flux applicatif. On verrait toujours les adresses IP, les ports TCP et le nom de domaine hôte dans le SNI (lors du handshake TLS), mais l'URL exacte, les headers HTTP, les cookies et le contenu de la page web deviendraient illisibles dans la capture.
 
 ---
 
