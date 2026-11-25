@@ -62,7 +62,7 @@ docker logs --tail 3 lab_internet
 > 💬 **Votre réponse :**
 >
 > Le serveur web voit l'adresse IP `172.20.0.254` (confirmé par `FROM=172.20.0.254` dans les logs nginx et la réponse de `/whoami`).
-> Ce n'est pas l'adresse IP du client (`172.20.1.50`). Il s'agit de l'adresse de l'interface WAN du routeur `nat-router`.
+> Ce n'est pas l'adresse IP du client (`172.20.1.151`). Il s'agit de l'adresse de l'interface WAN du routeur `nat-router`.
 
 **Question A.2.** Les adresses `172.20.x.x`, `192.168.x.x` et `10.x.x.x` sont des **adresses privées**
 (voir la fiche). Pourquoi un vrai serveur sur Internet ne pourrait-il pas répondre à une adresse privée ?
@@ -104,7 +104,7 @@ conntrack -L -p tcp
 👀 Une ligne par connexion. Chaque ligne contient **deux groupes** `src= dst= sport= dport=` :
 
 ```
-tcp 6 119 TIME_WAIT src=172.20.1.50 dst=172.20.0.10 sport=52942 dport=80 src=172.20.0.10 dst=172.20.0.254 sport=80 dport=52942 [ASSURED] ...
+tcp 6 110 TIME_WAIT src=172.20.1.151 dst=172.20.0.10 sport=59766 dport=80 src=172.20.0.10 dst=172.20.0.254 sport=80 dport=59766 [ASSURED] ...
                     └─────────────── ALLER (vu par le client) ───────────┘ └─────────────── RETOUR (vu par le serveur) ────────────┘
 ```
 
@@ -112,21 +112,21 @@ tcp 6 119 TIME_WAIT src=172.20.1.50 dst=172.20.0.10 sport=52942 dport=80 src=172
 
 | Sens   | IP source | IP destination | Port source | Port destination |
 | ------ | --------- | -------------- | ----------- | ---------------- |
-| Aller  | `172.20.1.50` | `172.20.0.10` | `52942` | `80` |
-| Retour | `172.20.0.10` | `172.20.0.254` | `80` | `52942` |
+| Aller  | `172.20.1.151` | `172.20.0.10` | `59766` | `80` |
+| Retour | `172.20.0.10` | `172.20.0.254` | `80` | `59766` |
 
 Dans le sens **retour**, à quelle adresse le serveur répond-il ? Qui fait la traduction vers le client ?
 
 > 💬 **Votre réponse :**
 >
-> Au retour, le serveur web répond à l'adresse WAN du routeur : `172.20.0.254`. C'est le routeur `nat-router` qui consulte sa table de suivi de connexions (`conntrack`), remplace l'IP destination par l'IP privée du client (`172.20.1.50`) et lui transmet le paquet sur le LAN.
+> Au retour, le serveur web répond à l'adresse WAN du routeur : `172.20.0.254`. C'est le routeur `nat-router` qui consulte sa table de suivi de connexions (`conntrack`), remplace l'IP destination par l'IP privée du client (`172.20.1.151`) et lui transmet le paquet sur le LAN.
 
 **Question B.2.** Combien de lignes voyez-vous pour vos 3 requêtes ? Les **ports source** sont-ils
 identiques ? Pourquoi est-ce indispensable quand plusieurs PC partagent la même adresse publique ?
 
 > 💬 **Votre réponse :**
 >
-> On voit 3 lignes (une par session TCP). Les ports source côté client sont différents pour chaque connexion (ex. `52942`, `52944`, `52946`).
+> On voit 3 lignes (une par session TCP). Les ports source côté client sont différents pour chaque connexion (`59766`, `52774` et `59008`).
 > C'est indispensable car quand plusieurs PC partagent une seule adresse IP publique, le routeur utilise le port pour démultiplexer les flux de retour. Sans ports distincts, le routeur ne pourrait pas savoir à quelle machine du réseau local réexpédier la réponse reçue.
 
 **Question B.3.** On parle de **PAT** (*Port Address Translation*) quand plusieurs machines partagent
@@ -184,8 +184,8 @@ Le paquet **aller** est bien parti : pourquoi la **réponse** ne revient-elle ja
 
 > 💬 **Votre réponse :**
 >
-> Le paquet SYN porte l'IP source `172.20.1.50` (l'adresse privée du client, non traduite).
-> Le paquet aller arrive bien jusqu'au serveur web, mais pour envoyer son SYN-ACK, le serveur web doit répondre à destination de `172.20.1.50`. Le serveur étant sur le réseau `172.20.0.0/24`, il ne sait pas comment joindre `172.20.1.0/24` (pas de route de retour vers le LAN), donc la réponse est perdue et n'atteint jamais le client.
+> Le paquet SYN porte l'IP source `172.20.1.151` (l'adresse privée du client, non traduite).
+> Le paquet aller arrive bien jusqu'au serveur web, mais pour envoyer son SYN-ACK, le serveur web doit répondre à destination de `172.20.1.151`. Le serveur étant sur le réseau `172.20.0.0/24`, il ne sait pas comment joindre `172.20.1.0/24` (pas de route de retour vers le LAN), donc la réponse est perdue et n'atteint jamais le client.
 
 ### Étape 9 — Réparer
 
@@ -212,7 +212,7 @@ le serveur web **et** de sa réponse, en indiquant à quel moment l'adresse est 
 
 > 💬 **Votre réponse :**
 >
-> Le client envoie son paquet au routeur avec son IP source privée (`172.20.1.50`) et l'IP du serveur (`172.20.0.10`). En traversant le routeur vers le WAN (étape POSTROUTING), la règle NAT remplace l'IP source par celle du routeur (`172.20.0.254`) et garde la session en mémoire dans `conntrack`. Le serveur web reçoit la requête et renvoie sa réponse à destination de `172.20.0.254`. À la réception, le routeur consulte `conntrack`, réécrit l'IP de destination avec celle du client (`172.20.1.50`) et lui transmet la réponse sur le LAN.
+> Le client envoie son paquet au routeur avec son IP source privée (`172.20.1.151`) et l'IP du serveur (`172.20.0.10`). En traversant le routeur vers le WAN (étape POSTROUTING), la règle NAT remplace l'IP source par celle du routeur (`172.20.0.254`) et garde la session en mémoire dans `conntrack`. Le serveur web reçoit la requête et renvoie sa réponse à destination de `172.20.0.254`. À la réception, le routeur consulte `conntrack`, réécrit l'IP de destination avec celle du client (`172.20.1.151`) et lui transmet la réponse sur le LAN.
 
 **Question D.2.** Chez vous, combien d'adresses IP publiques votre box possède-t-elle en général ?
 Combien d'appareils l'utilisent ? Quel mécanisme rend cela possible ?
