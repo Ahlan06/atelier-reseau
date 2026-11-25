@@ -48,7 +48,7 @@ ping -c 2 172.20.1.254
 > 💬 **Votre réponse :**
 >
 > On obtient l'erreur : `ping: connect: Network is unreachable`.
-> En vidant la configuration de l'interface avec `ip addr flush`, l'adresse IP et toutes les routes associées (la route locale et la passerelle par défaut) ont été supprimées de la table de routage. Le noyau ne sait plus par où router le paquet ni quelle IP source utiliser, donc l'émission est bloquée.
+> `ip addr flush` retire l'adresse et les routes locales créées avec cette adresse. La route par défaut configurée séparément peut encore apparaître dans `ip route`, mais sans adresse ni route directement connectée vers le réseau de la passerelle, le noyau ne peut pas acheminer le paquet vers celle-ci.
 
 ---
 
@@ -196,28 +196,28 @@ a-t-il associée à l'IP attribuée ?
 
 > 💬 **Votre réponse :**
 >
-> Parce qu'au moment d'envoyer le Discover, le client n'a pas encore d'adresse IP valide. L'adresse `0.0.0.0` est réservée par la RFC DHCP pour désigner un hôte non encore configuré sur le réseau local.
+> Parce qu'au moment d'envoyer le Discover, le client n'a pas encore d'adresse IP configurée. Il utilise donc `0.0.0.0`, l'adresse source non spécifiée, au lieu d'une adresse qu'il ne possède pas encore.
 
 **Question D.2.** Pourquoi le Discover est-il envoyé à `255.255.255.255` et à la MAC `ff:ff:ff:ff:ff:ff` ?
 Que signifient ces adresses ?
 
 > 💬 **Votre réponse :**
 >
-> Ce sont les adresses de broadcast (diffusion) au niveau IP (couche 3) et Ethernet (couche 2). Le client ne sait pas encore où se trouve le serveur DHCP ni quelle est son IP/MAC. En diffusant en broadcast, toutes les machines du LAN reçoivent le message, et seul le serveur DHCP le prend en charge.
+> Ce sont les adresses de broadcast (diffusion) au niveau IP (couche 3) et Ethernet (couche 2). Le client ne connaît pas encore l'adresse du serveur DHCP, alors il diffuse le message sur le réseau local afin que le ou les serveurs DHCP présents puissent le recevoir. Un relais DHCP peut aussi transmettre la demande à un serveur situé sur un autre réseau.
 
 **Question D.3.** À quoi sert le **Transaction ID**, identique dans les 4 messages ?
 (Imaginez 30 PC qui démarrent en même temps sur le même réseau.)
 
 > 💬 **Votre réponse :**
 >
-> C'est un identifiant de session généré aléatoirement par le client. Si plusieurs machines démarrent en même temps et lancent des requêtes DHCP en broadcast, le Transaction ID permet à chaque client d'identifier les offres (Offer) et validations (ACK) qui lui sont destinées et d'ignorer celles des autres machines.
+> C'est un identifiant de transaction choisi par le client et repris dans les réponses correspondantes. Il aide le client à associer une Offer ou un ACK à sa demande. Comme plusieurs clients peuvent avoir des transactions en cours, le serveur et le client s'appuient aussi sur l'identifiant du client (par exemple son adresse MAC ou son identifiant DHCP) : le Transaction ID seul n'identifie pas le client.
 
 **Question D.4.** Que se passe-t-il quand le **bail expire** ? Pourquoi les baux ont-ils une durée
 limitée plutôt qu'infinie ?
 
 > 💬 **Votre réponse :**
 >
-> Si le bail expire sans avoir été renouvelé, le client doit obligatoirement cesser d'utiliser l'adresse IP et redémarrer la procédure depuis le Discover.
+> Avant l'expiration, le client tente de renouveler son bail auprès du serveur. S'il n'y parvient pas et que le bail expire, il doit cesser d'utiliser l'adresse et recommencer l'acquisition DHCP, généralement par un Discover.
 > Les baux ont une durée limitée pour permettre au serveur de récupérer et réassigner les adresses des machines éteintes ou déconnectées, ce qui évite d'épuiser les adresses disponibles dans le pool.
 
 ---
@@ -237,7 +237,7 @@ Quel message est envoyé par `dhclient -r` ? Obtenez-vous la même adresse ensui
 > 💬 **Votre réponse :**
 >
 > La commande `dhclient -r` émet un message `DHCPRELEASE` en unicast vers le serveur DHCP.
-> En redemandant une adresse juste après, on réobtient la même (`172.20.1.134`). Dnsmasq conserve une table d'association récente (ou dérive l'attribution de la MAC), donc tant que l'adresse est libre, il la redonne au même client.
+> En redemandant une adresse juste après, on réobtient la même (`172.20.1.134`). Le serveur peut réattribuer au même client une adresse récemment libérée si elle est toujours disponible, mais DHCP ne garantit pas que ce sera toujours la même adresse.
 
 **P.2 — Panne du serveur DHCP.** 🖥️ Arrêtez le serveur, puis 💻 redemandez une adresse :
 
