@@ -201,14 +201,36 @@ for i in $(seq 1 20); do curl -s -o /dev/null -w "%{http_code}\n" $SITE/metrics 
 
 * Dans le résultat de l'étape 1, que représentent `p50` et `p99` ? Pourquoi `p99` est-il plus grand que `p50` ?
 
-  > 💬 **Votre réponse :** _…_
+  > 💬 **Votre réponse :**
+  >
+  > `p50` est la médiane : 50 % des requêtes ont eu un temps de réponse inférieur ou égal à cette
+  > valeur. `p99` est le 99e percentile : 99 % des requêtes ont été plus rapides que cette valeur.
+  > `p99` est généralement plus grand que `p50` car il décrit une position plus haute dans la
+  > distribution et inclut les ralentissements ou valeurs extrêmes. Il permet donc de détecter les
+  > mauvaises performances ressenties par une petite partie des utilisateurs.
 
 * À l'étape 2, combien de réponses `200` et combien de `429` obtenez-vous ? Que signifie le code `429` ?
   Retrouvez le nombre de `200` dans le paramètre `burst` affiché à l'étape 1.
   Pourquoi n'obtient-on pas de `429` si l'on envoie les requêtes **l'une après l'autre** ?
   (Indice : regardez `tokens_per_sec`.)
 
-  > 💬 **Votre réponse :** _…_
+  > 💬 **Votre réponse :**
+  >
+  > On observe normalement autour de 10 réponses `200` et 10 réponses `429` lors des 20 requêtes
+  > simultanées. Les comptes exacts peuvent varier légèrement selon le temps écoulé entre les deux
+  > étapes. Dans cette exécution locale de vérification, j'ai obtenu 9 réponses `200` et 11 réponses
+  > `429` : une requête de l'étape 1 avait consommé une partie du jeton initial.
+  >
+  > Le code HTTP `429 Too Many Requests` indique que la limite de débit du serveur est dépassée.
+  > Le paramètre `burst` vaut `10` : il représente le nombre de jetons disponibles immédiatement,
+  > donc le nombre maximal de requêtes admises presque simultanément (avec une petite variation
+  > possible selon les requêtes déjà envoyées).
+  >
+  > Si les requêtes sont envoyées l'une après l'autre, le seau reçoit de nouveaux jetons à
+  > `tokens_per_sec = 5`, soit 5 jetons par seconde. Tant que l'intervalle entre deux requêtes laisse
+  > le temps au seau de regarnir au moins un jeton, aucune requête n'est rejetée : on n'épuise pas
+  > les 10 jetons avant qu'ils soient remplacés. La course est donc limitée seulement quand les
+  > 20 requêtes arrivent plus vite que le système ne peut en produire des jetons.
 
 --------------------------------------------------------------------
 💾 Sauvegarder votre travail
